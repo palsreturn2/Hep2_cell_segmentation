@@ -1,0 +1,292 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include <math.h>
+#include "point.h"
+#include "image.h"
+#include "show_image.h"
+#include "morphology.h"
+#include "filtersAndGrads.h"
+#include "texture.h"
+#include "seedgen.h"
+#include "growcut.h"
+#include "textureOp.h"
+#include "LBP.h"
+void genFgm(GrayImage *img,GrayImage *result)
+{
+	char *pat="001111100011111110111111111111111111111111111111111111111111111011111110001111100";
+	int **SE=diskstrel(20),i,j;
+	GrayImage tmp,tmp2,Io,Iobr,Iobrcbr,Iobrd,Ie,Ioc,fgm;
+	
+	
+	initGrayImage(&Io,img->row,img->col,img->maxval);
+	initGrayImage(&Iobr,img->row,img->col,img->maxval);
+	initGrayImage(&Ioc,img->row,img->col,img->maxval);
+	initGrayImage(&Iobrcbr,img->row,img->col,img->maxval);
+	initGrayImage(&fgm,img->row,img->col,img->maxval);
+	
+	
+	Ie=imerode(img,SE,41);
+	
+	printf("Reconstruction started..\n");
+	fastgdilate(&Ie,img,&Iobr);
+	printf("Reconstruction end..\n");
+	
+	
+	freeImage(&Io);
+	freeImage(&Ioc);
+	
+	Iobrd=imdilate(&Iobr,SE,41);
+	
+	tmp=imcomplement(&Iobrd);
+	tmp2=imcomplement(&Iobr);
+	
+	printf("Reconstruction started..\n");
+	fastgdilate(&tmp,&tmp2,&Iobrcbr);
+	printf("Reconstruction end..\n");	
+	Iobrcbr=imcomplement(&Iobrcbr);
+	
+	printf("Finding regional maximum\n");
+	imregionalmax(&Iobrcbr,&fgm);
+	
+	imshow(fgm);
+	
+	for(i=0;i<img->row;i++)
+	{
+		for(j=0;j<img->col;j++)
+		{
+			result->f[i][j]=fgm.f[i][j];
+		}
+	}
+}
+void genBgm(GrayImage *img,GrayImage *fgm,GrayImage *bgm)
+{
+	GrayImage temp,te;
+	int **SE=diskstrel(8),i,j;
+	temp=histeq(img);
+	temp=im2bw(temp,graythres(&temp));
+	initGrayImage(&te,img->row,img->col,img->maxval);
+	imopen(&temp,SE,2*8+1,&te);
+	//imfill(&te,&temp);
+	temp=te;
+	te=imdilate(&te,diskstrel(3),7);
+	freeImage(&temp);
+	temp=imdilate(&te,strel("111111111",3),3);
+	for(i=0;i<img->row;i++)
+	{
+		for(j=0;j<img->col;j++)
+		{
+			if(fgm->f[i][j]!=0 && te.f[i][j]==0)
+			fgm->f[i][j]=0;
+		}
+	}
+	
+	for(i=0;i<img->row;i++)
+	{
+		for(j=0;j<img->col;j++)
+		{
+			bgm->f[i][j]=temp.f[i][j]-te.f[i][j];
+		}
+	}
+	
+}
+void genFinalImage(GrayImage *img,GrayImage *fgm,GrayImage *simg)
+{
+	GrayImage temp,temp2;
+	int *labels,nl,**SE=strel("111111111",3),i,j,k;
+	temp=imlabel(fgm,&labels,&nl);
+	for(k=0;k<nl;k++)
+	{
+		for(i=0;i<img->row;i++)
+		{
+			for(j=0;j<img->col;j++)
+			{
+				if(simg->f[i][j]==(labels[k]+1))
+				{
+					temp.f[i][j]=img->maxval;
+				}
+				else
+				{
+					temp.f[i][j]=0;
+				}
+			}
+		}
+		temp2=imerode(&temp,SE,3);
+		for(i=0;i<img->row;i++)
+		{
+			for(j=0;j<img->col;j++)
+			{
+				if((temp.f[i][j]-temp2.f[i][j])!=0)
+				img->f[i][j]=img->maxval;
+			}
+		}
+		freeImage(&temp2);
+	}
+	imshow(*img);
+}
+GrayImage imcrop(GrayImage *img,GrayImage *obj)
+{
+	Point2D *pts;
+	GrayImage temp;
+	Point2D leftx,rightx,topy,downy;
+	int i,j,npts=0,c=0;
+	for(i=0;i<img->row;i++)
+	{
+		for(j=0;j<img->col;j++)
+		{
+			if(obj->f[i][j]!=0)
+			npts++;
+		}
+	}
+	pts=(Point2D *)malloc(sizeof(Point2D)*npts);
+	for(i=0;i<img->row;i++)
+	{
+		for(j=0;j<img->col;j++)
+		{
+			if(obj->f[i][j]!=0)
+			{
+				setPoint(pts+c,i,j);
+				c++;
+			}
+		}
+	}
+	leftx=rightx=topy=downy=pts[0];
+	for(i=0;i<npts;i++)
+	{
+		if(leftx.x>pts[i].x)
+		leftx=pts[i];
+		if(rightx.x<pts[i].x)
+		rightx=pts[i];
+		if(topy.y>pts[i].y)
+		topy=pts[i];
+		if(downy.y<pts[i].y)
+		downy=pts[i];
+	}
+	initGrayImage(&temp,rightx.x-leftx.x+1,downy.y-topy.y+1,img->maxval);
+	for(i=leftx.x;i<=rightx.x;i++)
+	{
+		for(j=topy.y;j<=downy.y;j++)
+		{
+			temp.f[i-leftx.x][j-topy.y]=img->f[i][j];
+		}
+	}
+	return temp;
+}
+void textureTest(GrayImage *img,FILE *fp)
+{
+	int **matrix;
+	int i;
+	float con,uni,homo,en,cor;
+	float count=0;
+	float **promatrix;
+	matrix=(int **)malloc(sizeof(int *)*LEVEL);
+	for(i=0;i<LEVEL;i++)
+	{
+		matrix[i]=(int *)malloc(sizeof(int )*LEVEL);
+	}
+	
+	promatrix=(float  **)malloc(sizeof(float *)*LEVEL);
+	for(i=0;i<LEVEL;i++)
+	{
+		promatrix[i]=(float *)malloc(sizeof(float )*LEVEL);
+	}
+
+	comatrix(img,matrix,&count);
+	computeProb(matrix,promatrix,count);
+	con=constrast(promatrix);
+	uni=uniformity(promatrix);
+	homo=homogeneity(promatrix);
+	en=entropy(promatrix);
+	cor=correlation(promatrix);
+	fprintf(fp,"%lf\t%lf\t%lf\t%lf\t%lf\n",con,uni,homo,en,cor);
+}
+/*void testLBP(GrayImage *img,GrayImage *labelledImage)
+{
+		int i,j;
+		for(i=0;i<img->row;i++)
+		{
+			for(j=0;j<img->col;j++)
+			{
+				if(bin->f[i][j]!=0)
+				{
+					computeNeighbours(img,arr,i,j);
+					result.f[i][j]=calculateLBP(arr);
+				}
+			}
+		}
+		imshow(result);
+}*/
+void genFeatures(GrayImage *img,GrayImage *fgm,GrayImage *simg)
+{
+	GrayImage temp,cropped,LBPresult;
+	initGrayImage(&LBPresult,img->row,img->col,img->maxval);
+	int *labels,nl,i,j,k;
+	int *arr;
+	arr=(int *)malloc(sizeof(int)*9);	
+	temp=imlabel(fgm,&labels,&nl);
+	FILE *fp=fopen("features.xls","w");
+	for(k=0;k<nl;k++)
+	{
+		for(i=0;i<img->row;i++)
+		{
+			for(j=0;j<img->col;j++)
+			{
+				if(simg->f[i][j]==(labels[k]+1))
+				{
+					temp.f[i][j]=img->maxval;
+				}
+				else
+				{
+					temp.f[i][j]=0;
+				}
+			}
+		}
+		cropped=imcrop(img,&temp);
+		//Enter your function
+		
+		//textureTest(&cropped,fp);
+		//End
+		//printf("Press enter to continue\n");
+		//getchar();
+		//freeImage(&cropped);
+		
+	}
+	fclose(fp);
+	//Enter your function
+	//End
+}			
+void testgrowcut(GrayImage *img,GrayImage *fgm,GrayImage *bgm)
+{
+	GrayImage result;
+	initGrayImage(&result,img->row,img->col,img->maxval);
+	Cell cellOld;
+	int i,j;
+	cellOld.f=(struct cell **)malloc(sizeof(struct cell *) * img->row);
+	for(i=0;i<img->row;i++)
+	cellOld.f[i]=(struct cell *)malloc(sizeof(struct cell) * img->col);
+	cellOld.row=img->row;
+	cellOld.col=img->col;
+	initSeedPixel(img,fgm,bgm,&cellOld);
+	growCut(&cellOld,&result);
+	label2rgb(&result);
+	//genFinalImage(img,fgm,&result);
+	//genFeatures(img,fgm,&result);
+}
+
+main(int argc,char **argv)
+{
+	GrayImage img,fgm,bgm,nl;
+	readPGM(argv[1],&img);
+	//img.row=300;
+	//img.col=300;
+	initGrayImage(&fgm,img.row,img.col,img.maxval);
+	initGrayImage(&bgm,img.row,img.col,img.maxval);
+	initGrayImage(&nl,img.row,img.col,img.maxval);
+	genFgm(&img,&fgm);
+	//readPGM(argv[2],&fgm);
+	imopen(&fgm,diskstrel(4),9,&nl);
+	//fgm.row=300;
+	//fgm.col=300;
+	
+	genBgm(&img,&nl,&bgm);
+	testgrowcut(&img,&nl,&bgm);
+}

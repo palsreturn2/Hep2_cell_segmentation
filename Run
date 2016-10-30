@@ -1,0 +1,2 @@
+#!/bin/bash
+gcc -g image.c point.c show_image.c LBP.c Testing7.c libtest.c heap.c textureOp.c growcut.c morphology.c Eqclass.c filtersAndGrads.c segment.c texture.c seedgen.c queue.c colorimage.c testResult.c -o segment -lm

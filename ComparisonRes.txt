@@ -1,0 +1,19 @@
+******Coins.pgm**************************************************
+SEARCH COUNT of ORIGINAL GROWCUT is: 33948000
+SEARCH COUNT of fastgrowCut is :2239904
+*****************************************************************
+Total number of seeds :- 36079
+Total number of pixels :- 73800
+*******Bird.pgm**********************************************************
+SEARCH COUNT of ORIGINAL GROWCUT is: 124756008
+SEARCH COUNT of fastgrowCut is :9237240
+*****************************************************************
+Total number of seeds :- 42598
+Total number of pixels :- 154401
+*****************************************************************
+SEARCH COUNT of ORIGINAL GROWCUT is: -497166112
+SEARCH COUNT of fastgrowCut is :292157032
+*****************************************************************
+Total number of seeds :- 351999
+Total number of pixels :- 1440744
+*****************************************************************

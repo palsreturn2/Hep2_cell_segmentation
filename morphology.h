@@ -1,0 +1,18 @@
+int **strel(char *,int);
+int **diskstrel(int);
+void freeSE(int ***,int SE);
+GrayImage imerode(GrayImage *,int **,int);
+GrayImage imdilate(GrayImage *,int **,int);
+GrayImage hitormiss(GrayImage *,int **,int, int);
+void imopen(GrayImage *,int **,int,GrayImage *);
+void imclose(GrayImage *,int **,int,GrayImage *);
+void tophat(GrayImage *,int **,int,GrayImage *);
+void gdilate(GrayImage *,GrayImage *,GrayImage *);
+void imfill(GrayImage *,GrayImage *);
+void imregionalmax(GrayImage *mask,GrayImage *result);
+void fastgdilate(GrayImage *marker,GrayImage *mask,GrayImage *result);
+void bwdist(GrayImage *,GrayImage *);
+void convexHull(GrayImage *,GrayImage *);
+void convexHullObjects(GrayImage *img,GrayImage *result);
+void skeleton(GrayImage *,GrayImage *);
+void boundaryOuter(GrayImage *,GrayImage *);
