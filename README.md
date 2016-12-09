@@ -10,9 +10,13 @@ This project also consists of a sequential version of growcut developed by us th
 
 Steps to execute the code.
 
-1) Download a Hep2 cell image from google.
+1) Download a Hep2 cell image from google .(The images must be in .pgm format)
+
 2) The image needs to be manually segmented inorder to check the segmentation accuracy.
+
 3) Download the project in a folder and run "chmod 755 Run"
+
 4) Execute "./Run"
-5) Then execute "./segment <cellimage> <groundtruth>"
+
+5) Then execute "./segment <cellimage> <groundtruthimage>"
 
