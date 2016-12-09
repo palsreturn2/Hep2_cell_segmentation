@@ -6,7 +6,7 @@ This is a image segmentation project that uses region growing technique for segm
 
 This project also consists of a sequential version of growcut developed by us that is faster than the original parallel algorithm on a sequential machine. It can be proved that the sequential version of the algorithm gives the same result as the original growcut using contradiction The function is named as "syncgrowCut" algorithm and is present in "growcut.c".
 
-# Execution Sequence
+# Installation and running
 
 Steps to execute the code.
 
